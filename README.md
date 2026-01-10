@@ -61,12 +61,65 @@ homey devices set "Thermostat" target_temperature 22
 # List all flows
 homey flows list
 
+# Get flow details
+homey flows get "My Flow"
+
 # Trigger a flow
 homey flows trigger "Good Morning"
 
-# List available flow cards
+# Delete a flow
+homey flows delete "Old Flow"
+
+# List available flow cards (for creating flows)
+homey flows cards --type trigger
+homey flows cards --type condition
 homey flows cards --type action
-homey flows cards --type trigger --filter motion
+```
+
+#### Creating Flows
+
+Create flows from JSON files. See `homey flows create --help` for full documentation.
+
+```bash
+# Create a simple flow
+homey flows create my-flow.json
+
+# Create an advanced flow
+homey flows create --advanced my-advanced-flow.json
+```
+
+Example flow JSON (turn on heater when user arrives and temperature is low):
+
+```json
+{
+  "name": "Heat office on arrival",
+  "trigger": {
+    "id": "homey:manager:presence:user_enter",
+    "args": {
+      "user": {"id": "<user-id>", "name": "User Name"}
+    }
+  },
+  "conditions": [
+    {
+      "id": "homey:manager:logic:lt",
+      "droptoken": "homey:device:<device-id>|measure_temperature",
+      "args": {"comparator": 20}
+    }
+  ],
+  "actions": [
+    {"id": "homey:device:<device-id>:on", "args": {}},
+    {"id": "homey:device:<device-id>:target_temperature_set", "args": {"target_temperature": 23}}
+  ]
+}
+```
+
+Note: For droptokens, use pipe (`|`) before capability name.
+
+### Users
+
+```bash
+# List users (useful for getting user IDs for flows)
+homey users list
 ```
 
 ### Zones
