@@ -40,10 +40,9 @@ brews:
       owner: langtind
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    folder: Formula
+    directory: Formula
     homepage: "https://github.com/langtind/homey-cli"
     description: "CLI for controlling Homey smart home"
-    license: "MIT"
     install: |
       bin.install "homey"
     test: |
