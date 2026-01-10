@@ -7,6 +7,7 @@ homey-cli
 vendor/
 go.work
 go.work.sum
+cover.out
 
 # IDE
 .idea/
