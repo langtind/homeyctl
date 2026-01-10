@@ -1,0 +1,26 @@
+# Binary
+homey
+homey-cli
+*.exe
+
+# Go
+vendor/
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (may contain secrets)
+config.toml
+
+# Claude
+.claude/

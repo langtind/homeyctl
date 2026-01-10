@@ -1,0 +1,50 @@
+version: 2
+
+project_name: homey-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: .
+    binary: homey
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - repository:
+      owner: langtind
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    folder: Formula
+    homepage: "https://github.com/langtind/homey-cli"
+    description: "CLI for controlling Homey smart home"
+    license: "MIT"
+    install: |
+      bin.install "homey"
+    test: |
+      system "#{bin}/homey", "version"
