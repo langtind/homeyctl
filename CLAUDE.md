@@ -51,4 +51,33 @@ The client returns `json.RawMessage` for GET requests, allowing commands to pars
 
 ### Configuration
 
-Config is loaded in `PersistentPreRunE` on rootCmd. Commands that don't need API access (config, version, help) skip loading. Environment variables prefixed with `HOMEY_` override config file values.
+Config is loaded in `PersistentPreRunE` on rootCmd. Commands that don't need API access (config, version, help, ai) skip loading. Environment variables prefixed with `HOMEY_` override config file values.
+
+## Quick Context
+
+Run `homey ai` to get full documentation for AI assistants - includes flow format, examples, and common patterns.
+
+## Key Learnings
+
+### Flow JSON Format
+- **Droptoken format uses pipe (`|`)**: `homey:device:<id>|measure_temperature`
+- NOT colon: `homey:device:<id>:measure_temperature` ❌
+- The CLI validates this and warns if wrong format is detected
+
+### Homey API Behavior
+- **PUT does partial/merge updates** - only fields you send are changed
+- To remove conditions/actions, explicitly set empty array: `"conditions": []`
+- Omitting a field keeps its existing value
+
+### Output Format
+- All list commands return **flat JSON arrays** for easy parsing
+- Example: `homey flows list | jq '.[] | select(.name | test("pult";"i"))'`
+
+## Release Process
+
+```bash
+# Tag triggers GoReleaser + auto Homebrew tap update
+git tag v0.x.x && git push origin v0.x.x
+```
+
+GoReleaser builds for darwin/linux/windows (amd64+arm64) and updates `langtind/homebrew-tap`.
