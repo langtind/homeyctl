@@ -1,6 +1,6 @@
 package main
 
-import "github.com/langtind/homey-cli/cmd"
+import "github.com/langtind/homeyctl/cmd"
 
 var (
 	version = "dev"

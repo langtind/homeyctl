@@ -17,12 +17,12 @@ brew install homey-cli
 
 ### Download Binary
 
-Download from [Releases](https://github.com/langtind/homey-cli/releases) and add to your PATH.
+Download from [Releases](https://github.com/langtind/homeyctl/releases) and add to your PATH.
 
 ### Build from Source
 
 ```bash
-go install github.com/langtind/homey-cli@latest
+go install github.com/langtind/homeyctl@latest
 ```
 
 ## Getting Started

@@ -9,9 +9,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/langtind/homey-cli/internal/client"
-	"github.com/langtind/homey-cli/internal/config"
-	"github.com/langtind/homey-cli/internal/oauth"
+	"github.com/langtind/homeyctl/internal/client"
+	"github.com/langtind/homeyctl/internal/config"
+	"github.com/langtind/homeyctl/internal/oauth"
 	"github.com/spf13/cobra"
 )
 

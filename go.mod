@@ -1,4 +1,4 @@
-module github.com/langtind/homey-cli
+module github.com/langtind/homeyctl
 
 go 1.23.0
 

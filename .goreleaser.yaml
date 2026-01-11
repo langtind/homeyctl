@@ -50,7 +50,7 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/langtind/homey-cli"
+    homepage: "https://github.com/langtind/homeyctl"
     description: "CLI for controlling Homey smart home"
     install: |
       bin.install "homeyctl"

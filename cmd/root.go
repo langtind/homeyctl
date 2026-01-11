@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/langtind/homey-cli/internal/client"
-	"github.com/langtind/homey-cli/internal/config"
+	"github.com/langtind/homeyctl/internal/client"
+	"github.com/langtind/homeyctl/internal/config"
 )
 
 var (

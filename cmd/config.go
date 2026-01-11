@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/langtind/homey-cli/internal/config"
+	"github.com/langtind/homeyctl/internal/config"
 	"github.com/spf13/cobra"
 )
 
