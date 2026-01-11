@@ -266,11 +266,119 @@ var energyPriceCmd = &cobra.Command{
 	},
 }
 
+var energyPriceSetCmd = &cobra.Command{
+	Use:   "set <price>",
+	Short: "Set fixed electricity price",
+	Long: `Set a fixed electricity price per kWh.
+
+This is the total price Homey uses for cost calculations. You decide what to include:
+  - Spot price only (e.g., Nordpool)
+  - Spot + grid tariff + taxes
+  - Fixed deal price (e.g., "Norgespris" at 0.50 NOK/kWh incl. VAT)
+
+Homey does NOT automatically add grid fees or taxes - set the price you want to use.
+
+Examples:
+  homey energy price set 0.50      # Norgespris (0.50 kr/kWh incl. VAT, excl. grid)
+  homey energy price set 1.20      # Total price including grid fees
+  homey energy price set 0.85      # Spot price estimate`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var price float64
+		if _, err := fmt.Sscanf(args[0], "%f", &price); err != nil {
+			return fmt.Errorf("invalid price: %s (use decimal number, e.g., 0.50)", args[0])
+		}
+
+		if price < 0 {
+			return fmt.Errorf("price cannot be negative")
+		}
+
+		if err := apiClient.SetElectricityPriceFixed(price); err != nil {
+			return err
+		}
+
+		// Also ensure price type is set to fixed
+		if err := apiClient.SetElectricityPriceType("fixed"); err != nil {
+			return fmt.Errorf("price saved but failed to set price type to fixed: %w", err)
+		}
+
+		fmt.Printf("Set fixed electricity price: %.2f NOK/kWh\n", price)
+		return nil
+	},
+}
+
+var energyPriceTypeCmd = &cobra.Command{
+	Use:   "type [fixed|dynamic|disabled]",
+	Short: "Get or set electricity price type",
+	Long: `Get or set the electricity price type.
+
+Types:
+  fixed    - Use manually set fixed price (see: homey energy price set)
+  dynamic  - Use dynamic prices from Tibber/Nordpool
+  disabled - Disable price tracking
+
+Examples:
+  homey energy price type           # Show current type
+  homey energy price type fixed     # Switch to fixed pricing
+  homey energy price type dynamic   # Switch to dynamic pricing`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			// Get current type
+			data, err := apiClient.GetElectricityPriceType()
+			if err != nil {
+				return err
+			}
+			var priceType string
+			json.Unmarshal(data, &priceType)
+
+			// Also get fixed price if type is fixed
+			if priceType == "fixed" {
+				fixedData, err := apiClient.GetElectricityPriceFixed()
+				if err == nil {
+					var fixed struct {
+						Value struct {
+							Costs struct {
+								UserFixedBase struct {
+									Value float64 `json:"value"`
+								} `json:"user_fixed_base"`
+							} `json:"costs"`
+						} `json:"value"`
+					}
+					if json.Unmarshal(fixedData, &fixed) == nil {
+						fmt.Printf("Price type: %s (%.2f NOK/kWh)\n", priceType, fixed.Value.Costs.UserFixedBase.Value)
+						return nil
+					}
+				}
+			}
+
+			fmt.Printf("Price type: %s\n", priceType)
+			return nil
+		}
+
+		// Set type
+		priceType := args[0]
+		if priceType != "fixed" && priceType != "dynamic" && priceType != "disabled" {
+			return fmt.Errorf("invalid price type: %s (use: fixed, dynamic, disabled)", priceType)
+		}
+
+		if err := apiClient.SetElectricityPriceType(priceType); err != nil {
+			return err
+		}
+
+		fmt.Printf("Set electricity price type: %s\n", priceType)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(energyCmd)
 	energyCmd.AddCommand(energyLiveCmd)
 	energyCmd.AddCommand(energyReportCmd)
 	energyCmd.AddCommand(energyPriceCmd)
+
+	energyPriceCmd.AddCommand(energyPriceSetCmd)
+	energyPriceCmd.AddCommand(energyPriceTypeCmd)
 
 	energyReportCmd.Flags().String("date", "", "Date for report (format: YYYY-MM-DD for day, YYYY-MM for month)")
 }

@@ -302,3 +302,30 @@ func (c *Client) GetElectricityPrice(date string) (json.RawMessage, error) {
 	}
 	return c.doRequest("GET", path, nil)
 }
+
+func (c *Client) GetElectricityPriceType() (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/manager/energy/price/electricity/type", nil)
+}
+
+func (c *Client) SetElectricityPriceType(priceType string) error {
+	_, err := c.doRequest("PUT", "/api/manager/energy/price/electricity/"+priceType, nil)
+	return err
+}
+
+func (c *Client) GetElectricityPriceFixed() (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/manager/energy/option/electricityPriceFixed", nil)
+}
+
+func (c *Client) SetElectricityPriceFixed(price float64) error {
+	body := map[string]interface{}{
+		"value": map[string]interface{}{
+			"costs": map[string]interface{}{
+				"user_fixed_base": map[string]interface{}{
+					"value": price,
+				},
+			},
+		},
+	}
+	_, err := c.doRequest("PUT", "/api/manager/energy/option/electricityPriceFixed", body)
+	return err
+}

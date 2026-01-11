@@ -179,8 +179,15 @@ homey energy report day --date 2025-01-10
 homey energy report week
 homey energy report month --date 2025-12
 
-# Show electricity prices
+# Show electricity prices (dynamic)
 homey energy price
+
+# Set fixed electricity price (e.g., Norgespris 0.50 kr/kWh)
+homey energy price set 0.50
+
+# Get/set price type (fixed, dynamic, disabled)
+homey energy price type
+homey energy price type fixed
 ```
 
 ### Insights

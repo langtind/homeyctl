@@ -64,6 +64,10 @@ homey energy live                   # Live power usage
 homey energy report day             # Today's energy report
 homey energy report week            # This week's report
 homey energy report month --date 2025-12  # December report
+homey energy price                  # Show dynamic electricity prices
+homey energy price set 0.50         # Set fixed price (e.g., Norgespris)
+homey energy price type             # Show current price type
+homey energy price type fixed       # Switch to fixed pricing
 ` + "```" + `
 
 ### Insights
