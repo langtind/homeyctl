@@ -43,9 +43,11 @@ homey devices capability <id> <capability> <value>  # Control device
 ### Flows
 ` + "```" + `bash
 homey flows list                    # List all flows
-homey flows get <id>                # Get flow details
+homey flows get <name-or-id>        # Get flow details
 homey flows create <file.json>      # Create flow from JSON
-homey flows trigger <id>            # Manually trigger a flow
+homey flows update <name> <file>    # Update existing flow (merge)
+homey flows trigger <name-or-id>    # Trigger a flow by name or ID
+homey flows delete <name-or-id>     # Delete a flow
 ` + "```" + `
 
 ### Zones & Users
@@ -108,10 +110,28 @@ WRONG:   "homey:device:abc123:measure_temperature"
 - homey:manager:logic:gt - Greater than (use with droptoken)
 - homey:manager:logic:eq - Equals (use with droptoken)
 
+## Flow Update Behavior
+
+` + "`homey flows update`" + ` does a **partial/merge update**:
+- Only fields you include will be changed
+- Omitted fields keep their existing values
+- To remove conditions/actions, explicitly set empty array: ` + "`\"conditions\": []`" + `
+
+` + "```" + `bash
+# Rename a flow
+echo '{"name": "New Name"}' > rename.json
+homey flows update "Old Name" rename.json
+
+# Remove all conditions from a flow
+echo '{"conditions": []}' > clear.json
+homey flows update "My Flow" clear.json
+` + "```" + `
+
 ## Workflow Tips
 
 1. **Get device IDs first**: Run ` + "`homey devices list`" + ` to find device IDs
 2. **Get user IDs**: Run ` + "`homey users list`" + ` for presence triggers
 3. **Check capabilities**: Run ` + "`homey devices get <id>`" + ` to see available capabilities
 4. **Validate before creating**: The CLI validates flow JSON and warns about common mistakes
+5. **Test flows**: Use ` + "`homey flows trigger \"Flow Name\"`" + ` to test manually
 `

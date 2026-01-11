@@ -110,9 +110,17 @@ func (c *Client) CreateAdvancedFlow(flow map[string]interface{}) (json.RawMessag
 	return c.doRequest("POST", "/api/manager/flow/advancedflow/", flow)
 }
 
+func (c *Client) UpdateFlow(id string, flow map[string]interface{}) (json.RawMessage, error) {
+	return c.doRequest("PUT", "/api/manager/flow/flow/"+id, flow)
+}
+
 func (c *Client) DeleteFlow(id string) error {
 	_, err := c.doRequest("DELETE", "/api/manager/flow/flow/"+id, nil)
 	return err
+}
+
+func (c *Client) UpdateAdvancedFlow(id string, flow map[string]interface{}) (json.RawMessage, error) {
+	return c.doRequest("PUT", "/api/manager/flow/advancedflow/"+id, flow)
 }
 
 func (c *Client) DeleteAdvancedFlow(id string) error {

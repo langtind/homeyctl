@@ -383,6 +383,82 @@ func normalizeSimpleFlow(flow map[string]interface{}) {
 	}
 }
 
+var flowsUpdateCmd = &cobra.Command{
+	Use:   "update <name-or-id> <json-file>",
+	Short: "Update an existing flow",
+	Long: `Update an existing flow from a JSON file.
+
+IMPORTANT: This does a partial/merge update - only fields you include will be
+changed. Fields you omit keep their existing values. To remove conditions or
+actions, explicitly set them to an empty array: "conditions": []
+
+Examples:
+  # Full update workflow
+  homey flows get "My Flow" > flow.json
+  # Edit flow.json
+  homey flows update "My Flow" flow.json
+
+  # Partial update - just rename
+  echo '{"name": "New Name"}' | homey flows update "Old Name" /dev/stdin
+
+  # Remove all conditions
+  echo '{"conditions": []}' | homey flows update "My Flow" /dev/stdin`,
+	Args: cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		nameOrID := args[0]
+
+		data, err := os.ReadFile(args[1])
+		if err != nil {
+			return fmt.Errorf("failed to read file: %w", err)
+		}
+
+		var flow map[string]interface{}
+		if err := json.Unmarshal(data, &flow); err != nil {
+			return fmt.Errorf("invalid JSON: %w", err)
+		}
+
+		// Find the flow to get its ID and type
+		normalData, _ := apiClient.GetFlows()
+		advancedData, _ := apiClient.GetAdvancedFlows()
+
+		var normalFlows map[string]Flow
+		var advancedFlows map[string]AdvancedFlow
+		json.Unmarshal(normalData, &normalFlows)
+		json.Unmarshal(advancedData, &advancedFlows)
+
+		// Try normal flows first
+		for _, f := range normalFlows {
+			if f.ID == nameOrID || strings.EqualFold(f.Name, nameOrID) {
+				if err := validateFlow(flow, false); err != nil {
+					return err
+				}
+				normalizeSimpleFlow(flow)
+
+				_, err := apiClient.UpdateFlow(f.ID, flow)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Updated flow: %s\n", f.Name)
+				return nil
+			}
+		}
+
+		// Try advanced flows
+		for _, f := range advancedFlows {
+			if f.ID == nameOrID || strings.EqualFold(f.Name, nameOrID) {
+				_, err := apiClient.UpdateAdvancedFlow(f.ID, flow)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Updated advanced flow: %s\n", f.Name)
+				return nil
+			}
+		}
+
+		return fmt.Errorf("flow not found: %s", nameOrID)
+	},
+}
+
 var flowsDeleteCmd = &cobra.Command{
 	Use:   "delete <name-or-id>",
 	Short: "Delete a flow",
@@ -503,6 +579,7 @@ func init() {
 	flowsCmd.AddCommand(flowsListCmd)
 	flowsCmd.AddCommand(flowsGetCmd)
 	flowsCmd.AddCommand(flowsCreateCmd)
+	flowsCmd.AddCommand(flowsUpdateCmd)
 	flowsCmd.AddCommand(flowsTriggerCmd)
 	flowsCmd.AddCommand(flowsDeleteCmd)
 	flowsCmd.AddCommand(flowsCardsCmd)
