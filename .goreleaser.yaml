@@ -1,6 +1,6 @@
 version: 2
 
-project_name: homey-cli
+project_name: homeyctl
 
 before:
   hooks:
