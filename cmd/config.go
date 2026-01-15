@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/langtind/homeyctl/internal/config"
+	"github.com/langtind/homeyctl/internal/discovery"
 	"github.com/spf13/cobra"
 )
 
@@ -265,6 +268,89 @@ Examples:
 	},
 }
 
+var discoverTimeout int
+
+var configDiscoverCmd = &cobra.Command{
+	Use:   "discover",
+	Short: "Discover Homey on local network",
+	Long: `Discover Homey devices on the local network via mDNS.
+
+This command searches for Homey devices broadcasting on the network
+and verifies them by checking the ping endpoint.
+
+Returns JSON array with discovered devices (easy for AI/scripts to parse).
+
+Examples:
+  homeyctl config discover
+  homeyctl config discover --timeout 10`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		timeout := time.Duration(discoverTimeout) * time.Second
+		ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Second)
+		defer cancel()
+
+		// Load config to check format (config commands skip PersistentPreRunE)
+		loadedCfg, err := config.Load()
+		if err != nil {
+			loadedCfg = &config.Config{Format: "json"}
+		}
+
+		format := formatFlag
+		if format == "" {
+			format = loadedCfg.Format
+		}
+		useTable := format == "table"
+
+		if useTable {
+			fmt.Printf("Searching for Homey devices (timeout: %ds)...\n", discoverTimeout)
+		}
+
+		candidates, err := discovery.DiscoverAndVerify(ctx, timeout)
+		if err != nil {
+			return fmt.Errorf("discovery failed: %w", err)
+		}
+
+		// JSON output (default)
+		if !useTable {
+			result := make([]map[string]interface{}, len(candidates))
+			for i, c := range candidates {
+				result[i] = map[string]interface{}{
+					"address": c.Address,
+					"homeyId": c.HomeyID,
+					"host":    c.Host,
+					"port":    c.Port,
+				}
+			}
+			out, _ := json.MarshalIndent(result, "", "  ")
+			fmt.Println(string(out))
+			return nil
+		}
+
+		// Table output for humans
+		if len(candidates) == 0 {
+			fmt.Println("\nNo Homey devices found.")
+			fmt.Println("\nTips:")
+			fmt.Println("  - Make sure you're on the same network as your Homey")
+			fmt.Println("  - Try increasing timeout: --timeout 10")
+			fmt.Println("  - Set address manually: homeyctl config set-local <address> <token>")
+			return nil
+		}
+
+		fmt.Printf("\nFound %d Homey device(s):\n\n", len(candidates))
+
+		for i, c := range candidates {
+			fmt.Printf("  [%d] %s\n", i+1, c.Address)
+			if c.HomeyID != "" {
+				fmt.Printf("      Homey ID: %s\n", c.HomeyID)
+			}
+		}
+
+		fmt.Println("\nTo use a discovered Homey:")
+		fmt.Println("  homeyctl config set-local <address> <your-api-key>")
+
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configShowCmd)
@@ -273,4 +359,6 @@ func init() {
 	configCmd.AddCommand(configSetModeCmd)
 	configCmd.AddCommand(configSetLocalCmd)
 	configCmd.AddCommand(configSetCloudCmd)
+	configCmd.AddCommand(configDiscoverCmd)
+	configDiscoverCmd.Flags().IntVar(&discoverTimeout, "timeout", 5, "Discovery timeout in seconds")
 }
