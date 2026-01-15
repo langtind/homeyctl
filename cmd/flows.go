@@ -32,6 +32,8 @@ var flowsCmd = &cobra.Command{
 	Long:  `List, trigger, create, and delete Homey flows.`,
 }
 
+var flowsMatchFilter string
+
 // FlowListItem is the unified output format for flows
 type FlowListItem struct {
 	ID          string `json:"id"`
@@ -45,6 +47,12 @@ type FlowListItem struct {
 var flowsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all flows",
+	Long: `List all flows, optionally filtered by name.
+
+Examples:
+  homeyctl flows list
+  homeyctl flows list --match "night"
+  homeyctl flows list --match "motion"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get both normal and advanced flows
 		normalData, err := apiClient.GetFlows()
@@ -62,27 +70,31 @@ var flowsListCmd = &cobra.Command{
 		json.Unmarshal(normalData, &normalFlows)
 		json.Unmarshal(advancedData, &advancedFlows)
 
-		// Build flat list
+		// Build flat list with optional filtering
 		var allFlows []FlowListItem
 		for _, f := range normalFlows {
-			allFlows = append(allFlows, FlowListItem{
-				ID:          f.ID,
-				Name:        f.Name,
-				Type:        "simple",
-				Enabled:     f.Enabled,
-				Triggerable: f.Triggerable,
-				Broken:      f.Broken,
-			})
+			if flowsMatchFilter == "" || strings.Contains(strings.ToLower(f.Name), strings.ToLower(flowsMatchFilter)) {
+				allFlows = append(allFlows, FlowListItem{
+					ID:          f.ID,
+					Name:        f.Name,
+					Type:        "simple",
+					Enabled:     f.Enabled,
+					Triggerable: f.Triggerable,
+					Broken:      f.Broken,
+				})
+			}
 		}
 		for _, f := range advancedFlows {
-			allFlows = append(allFlows, FlowListItem{
-				ID:          f.ID,
-				Name:        f.Name,
-				Type:        "advanced",
-				Enabled:     f.Enabled,
-				Triggerable: f.Triggerable,
-				Broken:      f.Broken,
-			})
+			if flowsMatchFilter == "" || strings.Contains(strings.ToLower(f.Name), strings.ToLower(flowsMatchFilter)) {
+				allFlows = append(allFlows, FlowListItem{
+					ID:          f.ID,
+					Name:        f.Name,
+					Type:        "advanced",
+					Enabled:     f.Enabled,
+					Triggerable: f.Triggerable,
+					Broken:      f.Broken,
+				})
+			}
 		}
 
 		if isTableFormat() {
@@ -598,6 +610,7 @@ Examples:
 func init() {
 	rootCmd.AddCommand(flowsCmd)
 	flowsCmd.AddCommand(flowsListCmd)
+	flowsListCmd.Flags().StringVar(&flowsMatchFilter, "match", "", "Filter flows by name (case-insensitive)")
 	flowsCmd.AddCommand(flowsGetCmd)
 	flowsCmd.AddCommand(flowsCreateCmd)
 	flowsCmd.AddCommand(flowsUpdateCmd)

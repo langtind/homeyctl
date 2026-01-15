@@ -21,7 +21,7 @@ type Client struct {
 func New(cfg *config.Config) *Client {
 	return &Client{
 		baseURL: cfg.BaseURL(),
-		token:   cfg.Token,
+		token:   cfg.EffectiveToken(),
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},

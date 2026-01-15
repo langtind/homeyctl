@@ -22,7 +22,7 @@ func init() {
 const aiContext = `# homeyctl - AI Assistant Context
 
 ## Overview
-CLI for controlling Homey smart home via local API.
+CLI for controlling Homey smart home via local and cloud API.
 
 ## IMPORTANT: Scoped Tokens for AI Bots
 
@@ -72,12 +72,43 @@ For users who want full access:
 homeyctl login
 ` + "```" + `
 
+## Connection Modes
+
+homeyctl supports local (LAN/VPN) and cloud connections:
+
+` + "```" + `bash
+# Set connection mode
+homeyctl config set-mode auto   # Prefer local, fallback to cloud (default)
+homeyctl config set-mode local  # Always use local
+homeyctl config set-mode cloud  # Always use cloud
+
+# Discover Homey on local network (mDNS)
+homeyctl config discover        # Returns JSON array of found devices
+homeyctl config discover --timeout 10  # Increase search time
+
+# Discovery returns:
+# [{"address": "http://10.0.1.1:4859", "homeyId": "abc123", "host": "10.0.1.1", "port": 4859}]
+
+# Configure local connection
+homeyctl config set-local http://192.168.1.50 "local-api-key"
+
+# Configure cloud connection
+homeyctl config set-cloud "cloud-token"
+
+# View current config
+homeyctl config show
+` + "```" + `
+
 ## Available Commands
 
 ### Devices
 ` + "```" + `bash
 homeyctl devices list                  # List all devices
+homeyctl devices list --match "kitchen" # Filter by name
 homeyctl devices get <id>              # Get device details
+homeyctl devices values <name-or-id>   # Get all capability values
+homeyctl devices on <name-or-id>       # Turn device on (shorthand)
+homeyctl devices off <name-or-id>      # Turn device off (shorthand)
 homeyctl devices set <id> <capability> <value>  # Control device
 homeyctl devices get-settings <id>     # Get device settings
 homeyctl devices set-setting <id> <key> <value>  # Set device setting
@@ -91,6 +122,7 @@ at https://my.homey.app (Select Homey → Settings → API Keys).
 ### Flows
 ` + "```" + `bash
 homeyctl flows list                    # List all flows
+homeyctl flows list --match "night"    # Filter by name
 homeyctl flows get <name-or-id>        # Get flow details
 homeyctl flows create <file.json>      # Create flow from JSON
 homeyctl flows update <name> <file>    # Update existing flow (merge)
@@ -103,6 +135,14 @@ homeyctl flows delete <name-or-id>     # Delete a flow
 homeyctl zones list                    # List all zones
 homeyctl zones delete <name-or-id>     # Delete a zone
 homeyctl users list                    # List all users
+` + "```" + `
+
+### Tokens
+` + "```" + `bash
+homeyctl token list                    # List existing tokens
+homeyctl token create "Name" --preset readonly  # Create scoped token
+homeyctl token create "Name" --preset control   # Create control token
+homeyctl token delete <id>             # Delete a token
 ` + "```" + `
 
 ### Energy
@@ -121,6 +161,12 @@ homeyctl energy price type fixed       # Switch to fixed pricing
 ` + "```" + `bash
 homeyctl insights list                 # List all insight logs
 homeyctl insights get <log-id>         # Get historical data
+` + "```" + `
+
+### Snapshot
+` + "```" + `bash
+homeyctl snapshot                      # Get system, zones, devices overview
+homeyctl snapshot --include-flows      # Also include flows
 ` + "```" + `
 
 ## Flow JSON Format
@@ -215,4 +261,12 @@ homeyctl devices list | jq '.[] | select(.name | test("office";"i")) | .id'
 3. **Check capabilities**: Run ` + "`homeyctl devices get <id>`" + ` to see available capabilities
 4. **Validate before creating**: The CLI validates flow JSON and warns about common mistakes
 5. **Test flows**: Use ` + "`homeyctl flows trigger \"Flow Name\"`" + ` to test manually
+
+## Utility Commands
+
+` + "```" + `bash
+homeyctl version                       # Show version info
+homeyctl help                          # Show all commands
+homeyctl <command> --help              # Show help for specific command
+` + "```" + `
 `

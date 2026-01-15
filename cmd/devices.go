@@ -30,32 +30,49 @@ var devicesCmd = &cobra.Command{
 	Long:  `List, view, control, and delete Homey devices.`,
 }
 
+var devicesMatchFilter string
+
 var devicesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all devices",
+	Long: `List all devices, optionally filtered by name.
+
+Examples:
+  homeyctl devices list
+  homeyctl devices list --match "kitchen"
+  homeyctl devices list --match "light"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		data, err := apiClient.GetDevices()
 		if err != nil {
 			return err
 		}
 
-		if isTableFormat() {
-			var devices map[string]Device
-			if err := json.Unmarshal(data, &devices); err != nil {
-				return fmt.Errorf("failed to parse devices: %w", err)
-			}
+		var devices map[string]Device
+		if err := json.Unmarshal(data, &devices); err != nil {
+			return fmt.Errorf("failed to parse devices: %w", err)
+		}
 
+		// Filter devices if --match is provided
+		var filtered []Device
+		for _, d := range devices {
+			if devicesMatchFilter == "" || strings.Contains(strings.ToLower(d.Name), strings.ToLower(devicesMatchFilter)) {
+				filtered = append(filtered, d)
+			}
+		}
+
+		if isTableFormat() {
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			fmt.Fprintln(w, "NAME\tCLASS\tID")
 			fmt.Fprintln(w, "----\t-----\t--")
-			for _, d := range devices {
+			for _, d := range filtered {
 				fmt.Fprintf(w, "%s\t%s\t%s\n", d.Name, d.Class, d.ID)
 			}
 			w.Flush()
 			return nil
 		}
 
-		outputJSON(data)
+		out, _ := json.MarshalIndent(filtered, "", "  ")
+		fmt.Println(string(out))
 		return nil
 	},
 }
@@ -322,6 +339,137 @@ and driver-specific settings.`,
 	},
 }
 
+var devicesValuesCmd = &cobra.Command{
+	Use:   "values <name-or-id>",
+	Short: "Get all capability values for a device",
+	Long: `Get all current capability values for a device.
+
+Useful for multi-sensors and devices with many capabilities.
+
+Examples:
+  homeyctl devices values "PultLED"
+  homeyctl devices values "Multisensor 6"`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		nameOrID := args[0]
+
+		data, err := apiClient.GetDevices()
+		if err != nil {
+			return err
+		}
+
+		var devices map[string]Device
+		if err := json.Unmarshal(data, &devices); err != nil {
+			return fmt.Errorf("failed to parse devices: %w", err)
+		}
+
+		var device *Device
+		for _, d := range devices {
+			if d.ID == nameOrID || strings.EqualFold(d.Name, nameOrID) {
+				device = &d
+				break
+			}
+		}
+
+		if device == nil {
+			return fmt.Errorf("device not found: %s", nameOrID)
+		}
+
+		if isTableFormat() {
+			fmt.Printf("Values for %s:\n\n", device.Name)
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "CAPABILITY\tVALUE")
+			fmt.Fprintln(w, "----------\t-----")
+			for _, cap := range device.CapabilitiesObj {
+				fmt.Fprintf(w, "%s\t%v\n", cap.ID, cap.Value)
+			}
+			w.Flush()
+			return nil
+		}
+
+		// JSON output - just the values
+		values := make(map[string]interface{})
+		for _, cap := range device.CapabilitiesObj {
+			values[cap.ID] = cap.Value
+		}
+		out, _ := json.MarshalIndent(map[string]interface{}{
+			"id":     device.ID,
+			"name":   device.Name,
+			"values": values,
+		}, "", "  ")
+		fmt.Println(string(out))
+		return nil
+	},
+}
+
+var devicesOnCmd = &cobra.Command{
+	Use:   "on <name-or-id>",
+	Short: "Turn device on",
+	Long: `Turn a device on (shorthand for 'devices set <name> onoff true').
+
+Examples:
+  homeyctl devices on "Living Room Light"
+  homeyctl devices on "Aksels rom"`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return setDeviceOnOff(args[0], true)
+	},
+}
+
+var devicesOffCmd = &cobra.Command{
+	Use:   "off <name-or-id>",
+	Short: "Turn device off",
+	Long: `Turn a device off (shorthand for 'devices set <name> onoff false').
+
+Examples:
+  homeyctl devices off "Living Room Light"
+  homeyctl devices off "Aksels rom"`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return setDeviceOnOff(args[0], false)
+	},
+}
+
+func setDeviceOnOff(nameOrID string, on bool) error {
+	data, err := apiClient.GetDevices()
+	if err != nil {
+		return err
+	}
+
+	var devices map[string]Device
+	if err := json.Unmarshal(data, &devices); err != nil {
+		return fmt.Errorf("failed to parse devices: %w", err)
+	}
+
+	var device *Device
+	for _, d := range devices {
+		if d.ID == nameOrID || strings.EqualFold(d.Name, nameOrID) {
+			device = &d
+			break
+		}
+	}
+
+	if device == nil {
+		return fmt.Errorf("device not found: %s", nameOrID)
+	}
+
+	// Check if device supports onoff
+	if _, hasOnOff := device.CapabilitiesObj["onoff"]; !hasOnOff {
+		return fmt.Errorf("device '%s' does not support on/off", device.Name)
+	}
+
+	if err := apiClient.SetCapability(device.ID, "onoff", on); err != nil {
+		return err
+	}
+
+	state := "on"
+	if !on {
+		state = "off"
+	}
+	fmt.Printf("Turned %s %s\n", device.Name, state)
+	return nil
+}
+
 var devicesDeleteCmd = &cobra.Command{
 	Use:   "delete <name-or-id>",
 	Short: "Delete a device",
@@ -358,8 +506,12 @@ var devicesDeleteCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(devicesCmd)
 	devicesCmd.AddCommand(devicesListCmd)
+	devicesListCmd.Flags().StringVar(&devicesMatchFilter, "match", "", "Filter devices by name (case-insensitive)")
 	devicesCmd.AddCommand(devicesGetCmd)
+	devicesCmd.AddCommand(devicesValuesCmd)
 	devicesCmd.AddCommand(devicesSetCmd)
+	devicesCmd.AddCommand(devicesOnCmd)
+	devicesCmd.AddCommand(devicesOffCmd)
 	devicesCmd.AddCommand(devicesSetSettingCmd)
 	devicesCmd.AddCommand(devicesGetSettingsCmd)
 	devicesCmd.AddCommand(devicesDeleteCmd)
