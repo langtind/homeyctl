@@ -2,7 +2,7 @@
 
 ![homeyctl banner](banner.png)
 
-A command-line interface for controlling [Homey](https://homey.app) smart home devices via the local API.
+A command-line interface for controlling [Homey](https://homey.app) smart home devices via local and cloud API.
 
 > **Note:** The binary is named `homeyctl` to avoid conflicts with Athom's official `homey` CLI tool used for app development.
 
@@ -11,8 +11,7 @@ A command-line interface for controlling [Homey](https://homey.app) smart home d
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew tap langtind/tap
-brew install homey-cli
+brew install langtind/tap/homeyctl
 ```
 
 ### Download Binary
@@ -48,17 +47,39 @@ Available presets:
 - `control` - Read + control devices and trigger flows
 - `full` - Full access
 
+### Connection Modes
+
+homeyctl supports local (LAN) and cloud connections:
+
+```bash
+# Discover Homey on local network (mDNS)
+homeyctl config discover
+
+# Set connection mode
+homeyctl config set-mode auto    # Prefer local, fallback to cloud (default)
+homeyctl config set-mode local   # Always use local
+homeyctl config set-mode cloud   # Always use cloud
+
+# Configure local connection
+homeyctl config set-local http://192.168.1.50 <token>
+
+# Configure cloud connection
+homeyctl config set-cloud <token>
+
+# View current configuration
+homeyctl config show
+```
+
 ### Manual Configuration (Alternative)
 
-If OAuth doesn't work, you can configure manually:
+If OAuth doesn't work, create an API key manually:
 
-1. Go to [my.homey.app](https://my.homey.app/) → Settings → API Keys
+1. Go to [my.homey.app](https://my.homey.app/) → Select Homey → Settings → API Keys
 2. Create a new API key
 3. Configure homeyctl:
 
 ```bash
-homeyctl config set-host 192.168.1.100
-homeyctl config set-token <your-token>
+homeyctl config set-local http://<homey-ip> <your-token>
 ```
 
 Configuration is stored in `~/.config/homeyctl/config.toml`.
@@ -70,14 +91,24 @@ Configuration is stored in `~/.config/homeyctl/config.toml`.
 ```bash
 # List all devices
 homeyctl devices list
+homeyctl devices list --match "kitchen"   # Filter by name
 
 # Get device details
 homeyctl devices get "Living Room Light"
+homeyctl devices values "Living Room Light"  # All capability values
+
+# Quick on/off
+homeyctl devices on "Living Room Light"
+homeyctl devices off "Living Room Light"
 
 # Control devices
 homeyctl devices set "Living Room Light" onoff true
 homeyctl devices set "Living Room Light" dim 0.5
 homeyctl devices set "Thermostat" target_temperature 22
+
+# Device settings (separate from capabilities)
+homeyctl devices get-settings "Motion Sensor"
+homeyctl devices set-setting "Motion Sensor" zone_activity_disabled true
 
 # Delete a device
 homeyctl devices delete "Old Device"
@@ -88,6 +119,7 @@ homeyctl devices delete "Old Device"
 ```bash
 # List all flows
 homeyctl flows list
+homeyctl flows list --match "night"   # Filter by name
 
 # Get flow details
 homeyctl flows get "My Flow"
@@ -246,6 +278,18 @@ homeyctl system info
 
 # Reboot Homey (use with caution)
 homeyctl system reboot
+```
+
+### Snapshot
+
+Get a quick overview of your entire Homey system:
+
+```bash
+# System, zones, and devices overview
+homeyctl snapshot
+
+# Include flows in the snapshot
+homeyctl snapshot --include-flows
 ```
 
 ## Output Formats
