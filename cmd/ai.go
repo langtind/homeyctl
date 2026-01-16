@@ -22,251 +22,335 @@ func init() {
 const aiContext = `# homeyctl - AI Assistant Context
 
 ## Overview
-CLI for controlling Homey smart home via local and cloud API.
 
-## IMPORTANT: Scoped Tokens for AI Bots
+CLI for controlling Homey smart home via local and cloud API. This document helps AI assistants use homeyctl effectively and safely.
+
+## IMPORTANT: Token Security for AI
 
 AI assistants should use **restricted tokens** to prevent accidental damage.
 
-### Creating a Scoped Token
+### Creating a Scoped Token (Human runs this)
 
-The user (human) should run this command to create a token for you:
-` + "```" + `bash
+` + "```bash" + `
+# Read-only token (RECOMMENDED for AI)
 homeyctl token create "AI Bot" --preset readonly --no-save
+
+# Control token (can control devices, trigger flows)
+homeyctl token create "AI Bot" --preset control --no-save
 ` + "```" + `
 
-This outputs a token that only has READ access. The AI cannot:
-- Control devices
-- Delete devices/flows/zones
-- Trigger flows
-- Modify anything
+### Token Presets
 
-### Available Presets
+| Preset | Can Read | Can Control | Can Delete | Use Case |
+|--------|----------|-------------|------------|----------|
+| readonly | Yes | No | No | Safe AI exploration |
+| control | Yes | Yes | No | AI automation |
+| full | Yes | Yes | Yes | Full access (dangerous) |
 
-| Preset | Access Level | Use Case |
-|--------|--------------|----------|
-| readonly | Read only | Safe for AI exploration |
-| control | Read + control | AI can control devices, trigger flows |
-| full | Full access | Same as owner (dangerous) |
+### Access Denied Response
 
-### Using the Token
-
-After creating, configure homeyctl with the scoped token:
-` + "```" + `bash
-homeyctl config set-token <the-token-from-above>
-` + "```" + `
-
-### Verifying Your Access Level
-
-If you try an operation you don't have access to, you'll get:
+With a readonly token, write operations return:
 ` + "```" + `
 Error: 403 Missing Scopes
 ` + "```" + `
+This is expected - inform the user they need a higher access token.
 
-This is expected behavior with a readonly token.
+---
 
-## Quick Setup (Full Access)
+## Quick Reference
 
-For users who want full access:
-` + "```" + `bash
-homeyctl login
+### Read-Only Commands (Safe with readonly token)
+
+` + "```bash" + `
+# Devices
+homeyctl devices list                    # List all devices
+homeyctl devices list --match "kitchen"  # Filter by name
+homeyctl devices get "Device"            # Get device details
+homeyctl devices values "Device"         # Get capability values
+homeyctl devices get-settings "Device"   # Get device settings
+
+# Zones
+homeyctl zones list                      # List zones
+homeyctl zones get "Zone"                # Get zone details
+homeyctl zones icons                     # List available icons
+
+# Flows
+homeyctl flows list                      # List flows
+homeyctl flows get "Flow"                # Get flow details
+homeyctl flows cards --type trigger      # List available triggers
+homeyctl flows cards --type condition    # List conditions
+homeyctl flows cards --type action       # List actions
+homeyctl flows folders list              # List flow folders
+
+# Users & Presence
+homeyctl users list                      # List users
+homeyctl users me                        # Current user
+homeyctl users get "User"                # Get user details
+homeyctl presence get me                 # Get presence status
+homeyctl presence get "User"
+homeyctl presence asleep get me          # Get sleep status
+
+# Apps
+homeyctl apps list                       # List installed apps
+homeyctl apps get "App"                  # Get app details
+homeyctl apps usage "App"                # Resource usage
+homeyctl apps settings list "App"        # List app settings
+
+# Smart Home Status
+homeyctl moods list                      # List moods
+homeyctl moods get "Mood"                # Get mood details
+homeyctl dashboards list                 # List dashboards
+homeyctl dashboards get "Dashboard"
+homeyctl weather current                 # Current weather
+homeyctl weather forecast                # Weather forecast
+
+# Energy
+homeyctl energy live                     # Live power usage
+homeyctl energy report day               # Today's report
+homeyctl energy report week              # Weekly report
+homeyctl energy report month             # Monthly report
+homeyctl energy report year              # Yearly report
+homeyctl energy price                    # Electricity prices
+homeyctl energy currency                 # Currency setting
+
+# Insights & History
+homeyctl insights list                   # List insight logs
+homeyctl insights get "log-id"           # Get historical data
+homeyctl insights get "id" --resolution lastWeek
+
+# System
+homeyctl system info                     # System information
+homeyctl system name get                 # Get Homey name
+homeyctl variables list                  # List logic variables
+homeyctl variables get "var"             # Get variable value
+homeyctl notify list                     # List notifications
+homeyctl notify owners                   # Notification sources
+homeyctl snapshot                        # System overview
 ` + "```" + `
 
-## Connection Modes
+### Control Commands (Require control or full token)
 
-homeyctl supports local (LAN/VPN) and cloud connections:
+` + "```bash" + `
+# Device Control
+homeyctl devices on "Device"             # Turn on
+homeyctl devices off "Device"            # Turn off
+homeyctl devices set "Device" dim 0.5    # Set capability
+homeyctl devices set "Device" target_temperature 22
 
-` + "```" + `bash
-# Set connection mode
-homeyctl config set-mode auto   # Prefer local, fallback to cloud (default)
-homeyctl config set-mode local  # Always use local
-homeyctl config set-mode cloud  # Always use cloud
+# Presence Control
+homeyctl presence set me home            # Set home
+homeyctl presence set me away            # Set away
+homeyctl presence asleep set me asleep   # Set asleep
+homeyctl presence asleep set me awake    # Set awake
 
-# Discover Homey on local network (mDNS)
-homeyctl config discover        # Returns JSON array of found devices
-homeyctl config discover --timeout 10  # Increase search time
+# Flow Control
+homeyctl flows trigger "Flow"            # Trigger a flow
 
-# Discovery returns:
-# [{"address": "http://10.0.1.1:4859", "homeyId": "abc123", "host": "10.0.1.1", "port": 4859}]
+# Mood Control
+homeyctl moods set "Mood"                # Activate mood
 
-# Configure local connection
-homeyctl config set-local http://192.168.1.50 "local-api-key"
+# Variables
+homeyctl variables set "var" value       # Set variable
 
-# Configure cloud connection
-homeyctl config set-cloud "cloud-token"
-
-# View current config
-homeyctl config show
+# Notifications
+homeyctl notify send "Message"           # Send notification
 ` + "```" + `
 
-## Available Commands
+### Write/Delete Commands (Require full token)
 
-### Devices
-` + "```" + `bash
-homeyctl devices list                  # List all devices
-homeyctl devices list --match "kitchen" # Filter by name
-homeyctl devices get <id>              # Get device details
-homeyctl devices values <name-or-id>   # Get all capability values
-homeyctl devices on <name-or-id>       # Turn device on (shorthand)
-homeyctl devices off <name-or-id>      # Turn device off (shorthand)
-homeyctl devices set <id> <capability> <value>  # Control device
-homeyctl devices get-settings <id>     # Get device settings
-homeyctl devices set-setting <id> <key> <value>  # Set device setting
-homeyctl devices delete <name-or-id>   # Delete a device
+` + "```bash" + `
+# Devices
+homeyctl devices rename "Old" "New"
+homeyctl devices move "Device" "Zone"
+homeyctl devices delete "Device"
+homeyctl devices hide "Device"
+homeyctl devices unhide "Device"
+homeyctl devices set-icon "Device" icon.png
+homeyctl devices set-note "Device" "Note"
+homeyctl devices set-setting "Device" key value
+
+# Zones
+homeyctl zones create "Zone"
+homeyctl zones rename "Old" "New"
+homeyctl zones move "Zone" "Parent"
+homeyctl zones set-icon "Zone" "icon"
+homeyctl zones delete "Zone"
+
+# Flows
+homeyctl flows create flow.json
+homeyctl flows update "Flow" changes.json
+homeyctl flows delete "Flow"
+homeyctl flows folders create "Folder"
+homeyctl flows folders update "Folder" --name "New"
+homeyctl flows folders delete "Folder"
+
+# Users
+homeyctl users create "User"
+homeyctl users delete "User"
+
+# Moods
+homeyctl moods create "Mood"
+homeyctl moods update "Mood" --name "New"
+homeyctl moods delete "Mood"
+
+# Dashboards
+homeyctl dashboards create "Dashboard"
+homeyctl dashboards update "Dashboard" --name "New"
+homeyctl dashboards delete "Dashboard"
+
+# Apps
+homeyctl apps install com.app.id
+homeyctl apps uninstall com.app.id
+homeyctl apps enable com.app.id
+homeyctl apps disable com.app.id
+homeyctl apps restart com.app.id
+homeyctl apps settings set "App" key value
+
+# Variables
+homeyctl variables create "var" number 0
+homeyctl variables delete "var"
+
+# Notifications
+homeyctl notify delete <id>
+homeyctl notify clear
+
+# Insights
+homeyctl insights delete "log-id"
+homeyctl insights clear "log-id"
+
+# Energy
+homeyctl energy price set 0.50
+homeyctl energy price type fixed
+homeyctl energy delete --force
+
+# System
+homeyctl system name set "Name"
+homeyctl system reboot --force
 ` + "```" + `
 
-**Note on Device Settings**: Settings (like ` + "`zone_activity_disabled`" + `) require full ` + "`homey.device`" + ` scope.
-OAuth tokens only support ` + "`homey.device.control`" + `. For settings access, create an API key
-at https://my.homey.app (Select Homey → Settings → API Keys).
-
-### Flows
-` + "```" + `bash
-homeyctl flows list                    # List all flows
-homeyctl flows list --match "night"    # Filter by name
-homeyctl flows get <name-or-id>        # Get flow details
-homeyctl flows create <file.json>      # Create flow from JSON
-homeyctl flows update <name> <file>    # Update existing flow (merge)
-homeyctl flows trigger <name-or-id>    # Trigger a flow by name or ID
-homeyctl flows delete <name-or-id>     # Delete a flow
-` + "```" + `
-
-### Zones & Users
-` + "```" + `bash
-homeyctl zones list                    # List all zones
-homeyctl zones delete <name-or-id>     # Delete a zone
-homeyctl users list                    # List all users
-` + "```" + `
-
-### Tokens
-` + "```" + `bash
-homeyctl token list                    # List existing tokens
-homeyctl token create "Name" --preset readonly  # Create scoped token
-homeyctl token create "Name" --preset control   # Create control token
-homeyctl token delete <id>             # Delete a token
-` + "```" + `
-
-### Energy
-` + "```" + `bash
-homeyctl energy live                   # Live power usage
-homeyctl energy report day             # Today's energy report
-homeyctl energy report week            # This week's report
-homeyctl energy report month --date 2025-12  # December report
-homeyctl energy price                  # Show dynamic electricity prices
-homeyctl energy price set 0.50         # Set fixed price (e.g., Norgespris)
-homeyctl energy price type             # Show current price type
-homeyctl energy price type fixed       # Switch to fixed pricing
-` + "```" + `
-
-### Insights
-` + "```" + `bash
-homeyctl insights list                 # List all insight logs
-homeyctl insights get <log-id>         # Get historical data
-` + "```" + `
-
-### Snapshot
-` + "```" + `bash
-homeyctl snapshot                      # Get system, zones, devices overview
-homeyctl snapshot --include-flows      # Also include flows
-` + "```" + `
+---
 
 ## Flow JSON Format
 
 ### Simple Flow Example
-` + "```" + `json
+
+` + "```json" + `
 {
-  "name": "Turn on lights when arriving",
+  "name": "Turn on heater when cold",
   "trigger": {
     "id": "homey:manager:presence:user_enter",
-    "args": { "user": "user-uuid-here" }
+    "args": { "user": {"id": "user-uuid", "name": "User"} }
   },
   "conditions": [
     {
       "id": "homey:manager:logic:lt",
-      "args": { "value": 20 },
-      "droptoken": "homey:device:<device-id>|measure_temperature"
+      "droptoken": "homey:device:abc123|measure_temperature",
+      "args": { "comparator": 20 }
     }
   ],
   "actions": [
-    {
-      "id": "homey:device:<device-id>:thermostat_mode_heat",
-      "args": { "mode": "heat" }
-    }
+    { "id": "homey:device:def456:on", "args": {} },
+    { "id": "homey:device:def456:target_temperature_set", "args": { "target_temperature": 22 } }
   ]
 }
 ` + "```" + `
 
-## Critical: Droptoken Format
+### CRITICAL: Droptoken Format
 
-When referencing device capabilities in conditions, use pipe (|) separator:
+When referencing device capabilities in conditions, use **pipe (|)** separator:
+
 ` + "```" + `
 CORRECT: "homey:device:abc123|measure_temperature"
 WRONG:   "homey:device:abc123:measure_temperature"
 ` + "```" + `
 
-## ID Format Reference
+### ID Format Reference
 
 | Type | Format | Example |
 |------|--------|---------|
 | Device action | homey:device:<id>:<capability> | homey:device:abc123:on |
-| Manager trigger | homey:manager:<manager>:<event> | homey:manager:presence:user_enter |
-| Logic condition | homey:manager:logic:<operator> | homey:manager:logic:lt |
-| Droptoken | homey:device:<id>\|<capability> | homey:device:abc123\|measure_temperature |
+| Manager trigger | homey:manager:<mgr>:<event> | homey:manager:presence:user_enter |
+| Logic condition | homey:manager:logic:<op> | homey:manager:logic:lt |
+| Droptoken | homey:device:<id>\|<cap> | homey:device:abc123\|measure_temperature |
 
-## Common Triggers
-- homey:manager:presence:user_enter - User arrives home
-- homey:manager:presence:user_leave - User leaves home
-- homey:manager:time:time - At specific time
-- homey:device:<id>:<capability>_changed - Device state changes
+### Common Triggers
 
-## Common Conditions
-- homey:manager:logic:lt - Less than (use with droptoken)
-- homey:manager:logic:gt - Greater than (use with droptoken)
-- homey:manager:logic:eq - Equals (use with droptoken)
+- ` + "`homey:manager:presence:user_enter`" + ` - User arrives home
+- ` + "`homey:manager:presence:user_leave`" + ` - User leaves home
+- ` + "`homey:manager:time:time`" + ` - At specific time
+- ` + "`homey:device:<id>:<cap>_changed`" + ` - Device state changes
 
-## Flow Update Behavior
+### Common Conditions
 
-` + "`homeyctl flows update`" + ` does a **partial/merge update**:
-- Only fields you include will be changed
-- Omitted fields keep their existing values
-- To remove conditions/actions, explicitly set empty array: ` + "`\"conditions\": []`" + `
+- ` + "`homey:manager:logic:lt`" + ` - Less than (use with droptoken)
+- ` + "`homey:manager:logic:gt`" + ` - Greater than
+- ` + "`homey:manager:logic:eq`" + ` - Equals
 
-` + "```" + `bash
-# Rename a flow
-echo '{"name": "New Name"}' > rename.json
-homeyctl flows update "Old Name" rename.json
+### Flow Update Behavior
 
-# Remove all conditions from a flow
-echo '{"conditions": []}' > clear.json
-homeyctl flows update "My Flow" clear.json
-` + "```" + `
+` + "`homeyctl flows update`" + ` does **partial/merge updates**:
+- Only included fields are changed
+- Omitted fields keep existing values
+- To clear: ` + "`\"conditions\": []`" + `
 
-## Output Format
+---
 
-All list commands return flat JSON arrays for easy parsing:
-` + "```" + `bash
-# Find flow by name
-homeyctl flows list | jq '.[] | select(.name | test("pult";"i"))'
+## Output & Parsing
 
-# Get all enabled flows
+All list commands return flat JSON arrays:
+
+` + "```bash" + `
+# Find device by name
+homeyctl devices list | jq '.[] | select(.name | test("light";"i"))'
+
+# Get enabled flows
 homeyctl flows list | jq '.[] | select(.enabled)'
 
-# Get device IDs by name
-homeyctl devices list | jq '.[] | select(.name | test("office";"i")) | .id'
+# Get device IDs
+homeyctl devices list | jq -r '.[].id'
 ` + "```" + `
+
+---
 
 ## Workflow Tips
 
-1. **Get device IDs first**: Run ` + "`homeyctl devices list`" + ` to find device IDs
-2. **Get user IDs**: Run ` + "`homeyctl users list`" + ` for presence triggers
-3. **Check capabilities**: Run ` + "`homeyctl devices get <id>`" + ` to see available capabilities
-4. **Validate before creating**: The CLI validates flow JSON and warns about common mistakes
-5. **Test flows**: Use ` + "`homeyctl flows trigger \"Flow Name\"`" + ` to test manually
+1. **Get IDs first**: Use ` + "`homeyctl devices list`" + ` or ` + "`homeyctl users list`" + `
+2. **Check capabilities**: Use ` + "`homeyctl devices get <id>`" + ` to see what a device can do
+3. **List flow cards**: Use ` + "`homeyctl flows cards --type action`" + ` to find available actions
+4. **Test flows**: Use ` + "`homeyctl flows trigger \"Name\"`" + ` to test manually
+5. **Verify access**: If you get 403, inform user they need a different token preset
 
-## Utility Commands
+---
 
-` + "```" + `bash
-homeyctl version                       # Show version info
-homeyctl help                          # Show all commands
-homeyctl <command> --help              # Show help for specific command
+## Connection Setup
+
+` + "```bash" + `
+# Quick login (opens browser)
+homeyctl login
+
+# Set connection mode
+homeyctl config set-mode auto    # Prefer local, fallback cloud
+homeyctl config set-mode local   # Always local
+homeyctl config set-mode cloud   # Always cloud
+
+# Discover Homey on network
+homeyctl config discover
+
+# Manual setup
+homeyctl config set-local http://192.168.1.50 <token>
+homeyctl config set-cloud <token>
+
+# View config
+homeyctl config show
+` + "```" + `
+
+---
+
+## Help Commands
+
+` + "```bash" + `
+homeyctl help                    # All commands
+homeyctl <command> --help        # Command help
+homeyctl version                 # Version info
 ` + "```" + `
 `
