@@ -470,6 +470,56 @@ func setDeviceOnOff(nameOrID string, on bool) error {
 	return nil
 }
 
+var devicesRenameCmd = &cobra.Command{
+	Use:   "rename <name-or-id> <new-name>",
+	Short: "Rename a device",
+	Long: `Rename a device.
+
+Examples:
+  homeyctl devices rename "Old Name" "New Name"
+  homeyctl devices rename abc123-device-id "New Name"`,
+	Args: cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		nameOrID := args[0]
+		newName := args[1]
+
+		// Get all devices to find by name
+		data, err := apiClient.GetDevices()
+		if err != nil {
+			return err
+		}
+
+		var devices map[string]Device
+		if err := json.Unmarshal(data, &devices); err != nil {
+			return fmt.Errorf("failed to parse devices: %w", err)
+		}
+
+		// Find device by name or ID
+		var device *Device
+		for _, d := range devices {
+			if d.ID == nameOrID || strings.EqualFold(d.Name, nameOrID) {
+				device = &d
+				break
+			}
+		}
+
+		if device == nil {
+			return fmt.Errorf("device not found: %s", nameOrID)
+		}
+
+		updates := map[string]interface{}{
+			"name": newName,
+		}
+
+		if err := apiClient.UpdateDevice(device.ID, updates); err != nil {
+			return err
+		}
+
+		fmt.Printf("Renamed device '%s' to '%s'\n", device.Name, newName)
+		return nil
+	},
+}
+
 var devicesDeleteCmd = &cobra.Command{
 	Use:   "delete <name-or-id>",
 	Short: "Delete a device",
@@ -514,5 +564,6 @@ func init() {
 	devicesCmd.AddCommand(devicesOffCmd)
 	devicesCmd.AddCommand(devicesSetSettingCmd)
 	devicesCmd.AddCommand(devicesGetSettingsCmd)
+	devicesCmd.AddCommand(devicesRenameCmd)
 	devicesCmd.AddCommand(devicesDeleteCmd)
 }

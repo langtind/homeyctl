@@ -88,6 +88,11 @@ func (c *Client) DeleteDevice(id string) error {
 	return err
 }
 
+func (c *Client) UpdateDevice(id string, updates map[string]interface{}) error {
+	_, err := c.doRequest("PUT", "/api/manager/devices/device/"+id, updates)
+	return err
+}
+
 func (c *Client) GetDeviceSettings(id string) (json.RawMessage, error) {
 	return c.doRequest("GET", fmt.Sprintf("/api/manager/devices/device/%s/settings_obj", id), nil)
 }
@@ -165,6 +170,11 @@ func (c *Client) GetZones() (json.RawMessage, error) {
 
 func (c *Client) DeleteZone(id string) error {
 	_, err := c.doRequest("DELETE", "/api/manager/zones/zone/"+id, nil)
+	return err
+}
+
+func (c *Client) UpdateZone(id string, updates map[string]interface{}) error {
+	_, err := c.doRequest("PUT", "/api/manager/zones/zone/"+id, updates)
 	return err
 }
 
