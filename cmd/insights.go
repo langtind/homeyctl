@@ -25,6 +25,38 @@ var insightsCmd = &cobra.Command{
 	Long:  `View Homey insights logs and historical data.`,
 }
 
+// insightEntry is a single data point in an insight log.
+type insightEntry struct {
+	T time.Time   `json:"t"`
+	V interface{} `json:"v"`
+}
+
+// parseInsightEntries unmarshals the insights entries response. The Homey API
+// returns an object wrapping the data points in a "values" array (alongside
+// start/end/step metadata), not a flat array.
+func parseInsightEntries(raw []byte) ([]insightEntry, error) {
+	var resp struct {
+		Values []insightEntry `json:"values"`
+	}
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Values, nil
+}
+
+// resolveInsightLog finds a log by its full ID and returns the path parameters
+// for the insights API. The Homey API looks up logs by their full ID
+// (homey:device:<uuid>:<capability>), so that is what must be sent as the :id
+// path segment — sending ownerId (just the capability) yields a 404.
+func resolveInsightLog(logs []InsightLog, logID string) (uri, id, title string, found bool) {
+	for _, log := range logs {
+		if log.ID == logID {
+			return log.OwnerURI, log.ID, log.Title, true
+		}
+	}
+	return "", "", "", false
+}
+
 var insightsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all insight logs",
@@ -89,30 +121,19 @@ Examples:
 			return fmt.Errorf("failed to parse insights: %w", err)
 		}
 
-		var ownerURI, ownerID string
-		for _, log := range logs {
-			if log.ID == logID {
-				ownerURI = log.OwnerURI
-				ownerID = log.OwnerID
-				break
-			}
-		}
-
-		if ownerURI == "" {
+		ownerURI, id, _, found := resolveInsightLog(logs, logID)
+		if !found {
 			return fmt.Errorf("log not found: %s\nUse 'homeyctl insights list' to see available logs", logID)
 		}
 
-		entries, err := apiClient.GetInsightEntries(ownerURI, ownerID, resolution)
+		entries, err := apiClient.GetInsightEntries(ownerURI, id, resolution)
 		if err != nil {
 			return err
 		}
 
 		if isTableFormat() {
-			var entryList []struct {
-				T time.Time   `json:"t"`
-				V interface{} `json:"v"`
-			}
-			if err := json.Unmarshal(entries, &entryList); err != nil {
+			entryList, err := parseInsightEntries(entries)
+			if err != nil {
 				return fmt.Errorf("failed to parse entries: %w", err)
 			}
 
@@ -153,21 +174,12 @@ Examples:
 			return fmt.Errorf("failed to parse insights: %w", err)
 		}
 
-		var ownerURI, ownerID, title string
-		for _, log := range logs {
-			if log.ID == logID {
-				ownerURI = log.OwnerURI
-				ownerID = log.OwnerID
-				title = log.Title
-				break
-			}
-		}
-
-		if ownerURI == "" {
+		ownerURI, id, title, found := resolveInsightLog(logs, logID)
+		if !found {
 			return fmt.Errorf("log not found: %s", logID)
 		}
 
-		if err := apiClient.DeleteInsightLog(ownerURI, ownerID); err != nil {
+		if err := apiClient.DeleteInsightLog(ownerURI, id); err != nil {
 			return err
 		}
 
@@ -198,21 +210,12 @@ Examples:
 			return fmt.Errorf("failed to parse insights: %w", err)
 		}
 
-		var ownerURI, ownerID, title string
-		for _, log := range logs {
-			if log.ID == logID {
-				ownerURI = log.OwnerURI
-				ownerID = log.OwnerID
-				title = log.Title
-				break
-			}
-		}
-
-		if ownerURI == "" {
+		ownerURI, id, title, found := resolveInsightLog(logs, logID)
+		if !found {
 			return fmt.Errorf("log not found: %s", logID)
 		}
 
-		if err := apiClient.DeleteInsightLogEntries(ownerURI, ownerID); err != nil {
+		if err := apiClient.DeleteInsightLogEntries(ownerURI, id); err != nil {
 			return err
 		}
 
